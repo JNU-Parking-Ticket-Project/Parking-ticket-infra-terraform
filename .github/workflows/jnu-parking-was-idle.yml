@@ -3,6 +3,10 @@ on:
     workflow_dispatch:
 
 env:
+  TF_CLOUD_ORGANIZATION: sckwon770
+  TF_API_TOKEN: ${{ secrets.TF_API_TOKEN }}
+  TF_WORKSPACE: jnu-parking
+  CONFIG_DIRECTORY: "./"
   IMAGE_NAME: jnuparking/jnu-parking-prod
 
 jobs:
@@ -23,6 +27,9 @@ jobs:
         needs: [ prepare-variables ]
         name: 인프라 스케일 다운
         runs-on: ubuntu-latest
+        permissions:
+          contents: read
+          pull-requests: write
         env:
             AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
             AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
@@ -31,17 +38,30 @@ jobs:
                 working-directory: jnu-parking-prod-was/idle
         steps:
             - name: Checkout
-              uses: actions/checkout@v2
+              uses: actions/checkout@v3
 
-            - name: Setup Terraform
-              uses: hashicorp/setup-terraform@v3
+            - name: Upload Configuration
+              uses: hashicorp/tfc-workflows-github/actions/upload-configuration@v1.0.0
+              id: plan-upload
               with:
-                  terraform_version: 1.5.7
-                  terraform_wrapper: false
+                workspace: ${{ env.TF_WORKSPACE }}
+                directory: ${{ env.CONFIG_DIRECTORY }}
+                speculative: true
 
-            - name: Terraform Plan
-              id: plan
-              run: terraform plan -no-color
+            - name: Create Plan Run
+              uses: hashicorp/tfc-workflows-github/actions/create-run@v1.0.0
+              id: plan-run
+              with:
+                workspace: ${{ env.TF_WORKSPACE }}
+                configuration_version: ${{ steps.plan-upload.outputs.configuration_version_id }}
+                plan_only: true
+
+            - name: Get Plan Output
+              uses: hashicorp/tfc-workflows-github/actions/plan-output@v1.0.0
+              id: plan-output
+              with:
+                plan: ${{ fromJSON(steps.plan-run.outputs.payload).data.relationships.plan.data.id }}
+              
              
             # - name: Terraform Apply
             #   run: terraform apply -auto-approve
@@ -74,56 +94,56 @@ jobs:
               env:
                 SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
 
-    run-spring-boot:
-        needs: [ prepare-variables, modify-infra-with-terraform ]
-        runs-on: [ ubuntu-latest ]
-        name: 스프링 부트 기동
+    # run-spring-boot:
+    #     needs: [ prepare-variables, modify-infra-with-terraform ]
+    #     runs-on: [ ubuntu-latest ]
+    #     name: 스프링 부트 기동
 
-        permissions:
-            id-token: write
-            contents: read
+    #     permissions:
+    #         id-token: write
+    #         contents: read
 
-        steps:
-            - name: GitHub 에서 레포 받아오기
-              uses: actions/checkout@v3
+    #     steps:
+    #         - name: GitHub 에서 레포 받아오기
+    #           uses: actions/checkout@v3
 
-            - name: 배포 스크립트 실행
-              uses: appleboy/ssh-action@master
-              with:
-                host: ${{ secrets.PROD_SSH_HOST }}
-                username: ${{ secrets.PROD_SSH_USERNAME }}
-                key: ${{ secrets.PROD_SSH_KEY }}
-                port: ${{ secrets.PROD_SSH_PORT }}
-                script: |
-                    sudo docker rm -f $(sudo docker ps -qa)
-                    sudo docker pull ${{ needs.prepare-variables.outputs.image-name }}:latest
-                    sudo docker compose up -d --env-file .env.idle
-                    sudo docker image prune -f
+    #         - name: 배포 스크립트 실행
+    #           uses: appleboy/ssh-action@master
+    #           with:
+    #             host: ${{ secrets.PROD_SSH_HOST }}
+    #             username: ${{ secrets.PROD_SSH_USERNAME }}
+    #             key: ${{ secrets.PROD_SSH_KEY }}
+    #             port: ${{ secrets.PROD_SSH_PORT }}
+    #             script: |
+    #                 sudo docker rm -f $(sudo docker ps -qa)
+    #                 sudo docker pull ${{ needs.prepare-variables.outputs.image-name }}:latest
+    #                 sudo docker compose up -d --env-file .env.idle
+    #                 sudo docker image prune -f
 
-            - name: 배포 완료 슬랙 알림 보내기
-              uses: 8398a7/action-slack@v3
-              with:
-                status: custom
-                fields: author, workflowRun, pullRequest
-                custom_payload: |
-                    {
-                        attachments: [{
-                            color: '#24C183',
-                            title: '✅ Spring boot 기동 알림',
-                            text: `Spring boot 기동 성공!,
-                            fields: [
-                                {
-                                    title: '배포자',
-                                    value: `${process.env.AS_AUTHOR}`,
-                                    short: true,
-                                },
-                                {
-                                    title: '워크플로 링크',
-                                    value: `${process.env.AS_WORKFLOW_RUN}`,
-                                    short: true,
-                                },
-                            ]
-                        }]
-                    }
-              env:
-                SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+    #         - name: 배포 완료 슬랙 알림 보내기
+    #           uses: 8398a7/action-slack@v3
+    #           with:
+    #             status: custom
+    #             fields: author, workflowRun, pullRequest
+    #             custom_payload: |
+    #                 {
+    #                     attachments: [{
+    #                         color: '#24C183',
+    #                         title: '✅ Spring boot 기동 알림',
+    #                         text: `Spring boot 기동 성공!,
+    #                         fields: [
+    #                             {
+    #                                 title: '배포자',
+    #                                 value: `${process.env.AS_AUTHOR}`,
+    #                                 short: true,
+    #                             },
+    #                             {
+    #                                 title: '워크플로 링크',
+    #                                 value: `${process.env.AS_WORKFLOW_RUN}`,
+    #                                 short: true,
+    #                             },
+    #                         ]
+    #                     }]
+    #                 }
+    #           env:
+    #             SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
