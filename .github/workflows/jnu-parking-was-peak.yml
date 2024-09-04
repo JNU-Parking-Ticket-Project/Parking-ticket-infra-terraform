@@ -3,6 +3,10 @@ on:
     workflow_dispatch:
 
 env:
+  TF_CLOUD_ORGANIZATION: sckwon770
+  TF_API_TOKEN: ${{ secrets.TF_API_TOKEN }}
+  TF_WORKSPACE: jnu-parking
+  CONFIG_DIRECTORY: "./jnu-parking-prod-was/peak/"
   IMAGE_NAME: jnuparking/jnu-parking-prod
 
 jobs:
@@ -23,32 +27,37 @@ jobs:
         needs: [ prepare-variables ]
         name: 인프라 스케일 업
         runs-on: ubuntu-latest
+        permissions:
+          contents: read
+          pull-requests: write
         env:
             AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
             AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        defaults:
-            run:
-                working-directory: jnu-parking-prod-was/peak
         steps:
             - name: Checkout
-              uses: actions/checkout@v2
+              uses: actions/checkout@v3
 
-            - name: Setup Terraform
-              uses: hashicorp/setup-terraform@v3
+            - name: Upload Configuration
+              uses: hashicorp/tfc-workflows-github/actions/upload-configuration@v1.0.0
+              id: apply-upload
               with:
-                  terraform_version: 1.5.7
-                  terraform_wrapper: false
+                workspace: ${{ env.TF_WORKSPACE }}
+                directory: ${{ env.CONFIG_DIRECTORY }}
 
-            - name: Terraform Init
-              id: init
-              run: terraform init
-
-            - name: Terraform Plan
-              id: Plan
-              run: terraform plan -no-color
-             
-            # - name: Terraform Apply
-            #   run: terraform apply -auto-approve
+            - name: Create Plan Run
+              uses: hashicorp/tfc-workflows-github/actions/create-run@v1.0.0
+              id: apply-run
+              with:
+                workspace: ${{ env.TF_WORKSPACE }}
+                configuration_version: ${{ steps.apply-upload.outputs.configuration_version_id }}
+              
+            - name: Apply
+              uses: hashicorp/tfc-workflows-github/actions/apply-run@v1.0.0
+              if: fromJSON(steps.apply-run.outputs.payload).data.attributes.actions.IsConfirmable
+              id: apply
+              with:
+                run: ${{ steps.apply-run.outputs.run_id }}
+                comment: "Apply Run from GitHub Actions CI ${{ github.sha }}"
 
             - name: 배포 완료 슬랙 알림 보내기
               uses: 8398a7/action-slack@v3
@@ -77,16 +86,14 @@ jobs:
                     }
               env:
                 SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
-
+                
     run-spring-boot:
         needs: [ prepare-variables, modify-infra-with-terraform ]
         runs-on: [ ubuntu-latest ]
         name: 스프링 부트 기동
-
         permissions:
             id-token: write
             contents: read
-
         steps:
             - name: GitHub 에서 레포 받아오기
               uses: actions/checkout@v3
@@ -101,9 +108,9 @@ jobs:
                 script: |
                     sudo docker rm -f $(sudo docker ps -qa)
                     sudo docker pull ${{ needs.prepare-variables.outputs.image-name }}:latest
-                    sudo docker compose up -d --env-file .env.peak
+                    sudo docker compose -f docker-compose-peak.yml up -d
                     sudo docker image prune -f
-
+                    
             - name: 배포 완료 슬랙 알림 보내기
               uses: 8398a7/action-slack@v3
               with:

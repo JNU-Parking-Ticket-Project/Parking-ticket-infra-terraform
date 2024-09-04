@@ -37,55 +37,55 @@ jobs:
             - name: Checkout
               uses: actions/checkout@v3
 
-            - name: Upload Configuration
-              uses: hashicorp/tfc-workflows-github/actions/upload-configuration@v1.0.0
-              id: apply-upload
-              with:
-                workspace: ${{ env.TF_WORKSPACE }}
-                directory: ${{ env.CONFIG_DIRECTORY }}
+            # - name: Upload Configuration
+            #   uses: hashicorp/tfc-workflows-github/actions/upload-configuration@v1.0.0
+            #   id: apply-upload
+            #   with:
+            #     workspace: ${{ env.TF_WORKSPACE }}
+            #     directory: ${{ env.CONFIG_DIRECTORY }}
 
-            - name: Create Plan Run
-              uses: hashicorp/tfc-workflows-github/actions/create-run@v1.0.0
-              id: apply-run
-              with:
-                workspace: ${{ env.TF_WORKSPACE }}
-                configuration_version: ${{ steps.apply-upload.outputs.configuration_version_id }}
+            # - name: Create Plan Run
+            #   uses: hashicorp/tfc-workflows-github/actions/create-run@v1.0.0
+            #   id: apply-run
+            #   with:
+            #     workspace: ${{ env.TF_WORKSPACE }}
+            #     configuration_version: ${{ steps.apply-upload.outputs.configuration_version_id }}
               
-            - name: Apply
-              uses: hashicorp/tfc-workflows-github/actions/apply-run@v1.0.0
-              if: fromJSON(steps.apply-run.outputs.payload).data.attributes.actions.IsConfirmable
-              id: apply
-              with:
-                run: ${{ steps.apply-run.outputs.run_id }}
-                comment: "Apply Run from GitHub Actions CI ${{ github.sha }}"
+            # - name: Apply
+            #   uses: hashicorp/tfc-workflows-github/actions/apply-run@v1.0.0
+            #   if: fromJSON(steps.apply-run.outputs.payload).data.attributes.actions.IsConfirmable
+            #   id: apply
+            #   with:
+            #     run: ${{ steps.apply-run.outputs.run_id }}
+            #     comment: "Apply Run from GitHub Actions CI ${{ github.sha }}"
 
-            - name: 배포 완료 슬랙 알림 보내기
-              uses: 8398a7/action-slack@v3
-              with:
-                status: custom
-                fields: author, workflowRun, pullRequest
-                custom_payload: |
-                    {
-                        attachments: [{
-                            color: '#2E289E',
-                            title: '🧊 인프라 조정 알림',
-                            text: `주차권 시스템 Scale-down 성공! (EC2, RDS, ElastiCache)`,
-                            fields: [
-                                {
-                                    title: '배포자',
-                                    value: `${process.env.AS_AUTHOR}`,
-                                    short: true,
-                                },
-                                {
-                                    title: '워크플로 링크',
-                                    value: `${process.env.AS_WORKFLOW_RUN}`,
-                                    short: true,
-                                },
-                            ]
-                        }]
-                    }
-              env:
-                SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+            # - name: 배포 완료 슬랙 알림 보내기
+            #   uses: 8398a7/action-slack@v3
+            #   with:
+            #     status: custom
+            #     fields: author, workflowRun, pullRequest
+            #     custom_payload: |
+            #         {
+            #             attachments: [{
+            #                 color: '#2E289E',
+            #                 title: '🧊 인프라 조정 알림',
+            #                 text: `주차권 시스템 Scale-down 성공! (EC2, RDS, ElastiCache)`,
+            #                 fields: [
+            #                     {
+            #                         title: '배포자',
+            #                         value: `${process.env.AS_AUTHOR}`,
+            #                         short: true,
+            #                     },
+            #                     {
+            #                         title: '워크플로 링크',
+            #                         value: `${process.env.AS_WORKFLOW_RUN}`,
+            #                         short: true,
+            #                     },
+            #                 ]
+            #             }]
+            #         }
+            #   env:
+            #     SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
                 
     run-spring-boot:
         needs: [ prepare-variables, modify-infra-with-terraform ]
@@ -97,6 +97,7 @@ jobs:
         steps:
             - name: GitHub 에서 레포 받아오기
               uses: actions/checkout@v3
+
             - name: 배포 스크립트 실행
               uses: appleboy/ssh-action@master
               with:
@@ -107,8 +108,9 @@ jobs:
                 script: |
                     sudo docker rm -f $(sudo docker ps -qa)
                     sudo docker pull ${{ needs.prepare-variables.outputs.image-name }}:latest
-                    sudo docker compose up -d --env-file .env.idle
+                    sudo docker compose -f docker-compose.yml up -d
                     sudo docker image prune -f
+                    
             - name: 배포 완료 슬랙 알림 보내기
               uses: 8398a7/action-slack@v3
               with:
