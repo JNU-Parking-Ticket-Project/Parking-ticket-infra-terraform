@@ -43,14 +43,6 @@ jobs:
               id: init
               run: terraform init
 
-            # - name: Terraform Import
-            #   id: import
-            #   run: |
-            #     terraform import aws_eip.was-eip1 eipalloc-0bd8840069f605ca0
-            #     terraform import aws_instance.jnu-parking-ec2-prod i-0a7e1c8e7f0b149b0
-            #     terraform import aws_db_instance.jnu-parking-rds-prod jnu-parking-rds-prod
-            #     terraform import aws_elasticache_replication_group.jnu-parking-redis-prod jnu-parking-redis-prod
-
             - name: Terraform Plan
               id: Plan
               run: terraform plan -no-color

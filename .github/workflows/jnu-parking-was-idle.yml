@@ -43,8 +43,8 @@ jobs:
               id: plan
               run: terraform plan -no-color
              
-            - name: Terraform Apply
-              run: terraform apply -auto-approve
+            # - name: Terraform Apply
+            #   run: terraform apply -auto-approve
 
             - name: 배포 완료 슬랙 알림 보내기
               uses: 8398a7/action-slack@v3
