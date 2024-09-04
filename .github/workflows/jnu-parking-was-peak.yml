@@ -21,14 +21,14 @@ jobs:
 
     modify-infra-with-terraform:
         needs: [ prepare-variables ]
-        name: 인프라 스케일 다운
+        name: 인프라 스케일 업
         runs-on: ubuntu-latest
         env:
             AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
             AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         defaults:
             run:
-                working-directory: jnu-parking-prod-was/idle
+                working-directory: jnu-parking-prod-was/peak
         steps:
             - name: Checkout
               uses: actions/checkout@v2
@@ -63,8 +63,8 @@ jobs:
                     {
                         attachments: [{
                             color: '#2E289E',
-                            title: '🧊 인프라 조정 알림',
-                            text: `주차권 시스템 Scale-down 성공! (EC2, RDS, ElastiCache)`,
+                            title: '🔥 인프라 조정 알림',
+                            text: `주차권 시스템 Scale-up 성공! (EC2, RDS, ElastiCache)`,
                             fields: [
                                 {
                                     title: '배포자',
@@ -105,7 +105,7 @@ jobs:
                 script: |
                     sudo docker rm -f $(sudo docker ps -qa)
                     sudo docker pull ${{ needs.prepare-variables.outputs.image-name }}:latest
-                    sudo docker compose up -d --env-file .env.idle
+                    sudo docker compose up -d --env-file .env.peak
                     sudo docker image prune -f
 
             - name: 배포 완료 슬랙 알림 보내기
