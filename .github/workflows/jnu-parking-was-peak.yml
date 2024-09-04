@@ -1,4 +1,4 @@
-name: 전남대 주차권 WAS 인프라 - 피크 타임 Scale-Up
+name: WAS 인프라 - 피크 타임 Scale-Up
 on:
     workflow_dispatch:
 
