@@ -6,7 +6,7 @@ env:
   TF_CLOUD_ORGANIZATION: sckwon770
   TF_API_TOKEN: ${{ secrets.TF_API_TOKEN }}
   TF_WORKSPACE: jnu-parking
-  CONFIG_DIRECTORY: "./"
+  CONFIG_DIRECTORY: "./generated/aws/elasticache"
   IMAGE_NAME: jnuparking/jnu-parking-prod
 
 jobs:
