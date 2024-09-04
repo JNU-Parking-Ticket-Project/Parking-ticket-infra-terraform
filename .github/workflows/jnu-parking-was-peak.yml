@@ -121,7 +121,7 @@ jobs:
                         attachments: [{
                             color: '#24C183',
                             title: '✅ Spring boot 기동 알림',
-                            text: `Spring boot 기동 성공!,
+                            text: 'Spring boot 기동 성공!',
                             fields: [
                                 {
                                     title: '배포자',
