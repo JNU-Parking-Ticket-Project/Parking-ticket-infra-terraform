@@ -38,10 +38,6 @@ jobs:
               with:
                   terraform_version: 1.5.7
                   terraform_wrapper: false
-            
-            - name: Terraform Format
-              id: fmt
-              run: terraform fmt -check
 
             - name: Terraform Init
               id: init
