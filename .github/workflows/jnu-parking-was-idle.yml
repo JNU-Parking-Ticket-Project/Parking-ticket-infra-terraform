@@ -83,7 +83,7 @@ jobs:
                 SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
 
     run-spring-boot:
-        needs: [ prepare-variables ]
+        needs: [ prepare-variables, modify-infra-with-terraform ]
         runs-on: [ ubuntu-latest ]
         name: 스프링 부트 기동
 
