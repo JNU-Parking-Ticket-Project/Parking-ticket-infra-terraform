@@ -6,7 +6,7 @@ env:
   TF_CLOUD_ORGANIZATION: sckwon770
   TF_API_TOKEN: ${{ secrets.TF_API_TOKEN }}
   TF_WORKSPACE: jnu-parking
-  CONFIG_DIRECTORY: "./generated/aws/elasticache/"
+  CONFIG_DIRECTORY: "./jnu-parking-prod-was/idle/"
   IMAGE_NAME: jnuparking/jnu-parking-prod
 
 jobs:
@@ -33,9 +33,6 @@ jobs:
         env:
             AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
             AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        defaults:
-            run:
-                working-directory: jnu-parking-prod-was/idle
         steps:
             - name: Checkout
               uses: actions/checkout@v3
