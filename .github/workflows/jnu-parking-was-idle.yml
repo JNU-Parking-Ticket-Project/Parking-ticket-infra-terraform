@@ -39,31 +39,24 @@ jobs:
 
             - name: Upload Configuration
               uses: hashicorp/tfc-workflows-github/actions/upload-configuration@v1.0.0
-              id: plan-upload
+              id: apply-upload
               with:
                 workspace: ${{ env.TF_WORKSPACE }}
                 directory: ${{ env.CONFIG_DIRECTORY }}
-                speculative: true
 
             - name: Create Plan Run
               uses: hashicorp/tfc-workflows-github/actions/create-run@v1.0.0
-              id: plan-run
+              id: apply-run
               with:
                 workspace: ${{ env.TF_WORKSPACE }}
-                configuration_version: ${{ steps.plan-upload.outputs.configuration_version_id }}
-
-            - name: Get Plan Output
-              uses: hashicorp/tfc-workflows-github/actions/plan-output@v1.0.0
-              id: plan-output
-              with:
-                plan: ${{ fromJSON(steps.plan-run.outputs.payload).data.relationships.plan.data.id }}
+                configuration_version: ${{ steps.apply-upload.outputs.configuration_version_id }}
               
             - name: Apply
               uses: hashicorp/tfc-workflows-github/actions/apply-run@v1.0.0
-              if: fromJSON(steps.plan-run.outputs.payload).data.attributes.actions.IsConfirmable
+              if: fromJSON(steps.apply-run.outputs.payload).data.attributes.actions.IsConfirmable
               id: apply
               with:
-                run: ${{ steps.plan-run.outputs.run_id }}
+                run: ${{ steps.apply-run.outputs.run_id }}
                 comment: "Apply Run from GitHub Actions CI ${{ github.sha }}"
 
             - name: 배포 완료 슬랙 알림 보내기
