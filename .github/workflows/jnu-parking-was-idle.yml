@@ -39,10 +39,6 @@ jobs:
                   terraform_version: 1.5.7
                   terraform_wrapper: false
 
-            - name: Terraform Init
-              id: init
-              run: terraform init
-
             - name: Terraform Plan
               id: plan
               run: terraform plan -no-color
