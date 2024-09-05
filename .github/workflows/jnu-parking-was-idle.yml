@@ -108,7 +108,7 @@ jobs:
                 script: |
                     sudo docker rm -f $(sudo docker ps -qa)
                     sudo docker pull ${{ needs.prepare-variables.outputs.image-name }}:latest
-                    sudo docker compose -f docker-compose.yml up -d
+                    sudo docker compose --env-file .env.idle up -d
                     sudo docker image prune -f
                     
             - name: 배포 완료 슬랙 알림 보내기
