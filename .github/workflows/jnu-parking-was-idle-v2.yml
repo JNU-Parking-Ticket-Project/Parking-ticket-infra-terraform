@@ -62,7 +62,7 @@ jobs:
                     {
                         attachments: [{
                             color: '#2E289E',
-                            title: '🤖 주차권 시스템 Scale-down 시작!`,
+                            title: '🤖 주차권 시스템 Scale-down 시작!',
                             fields: [
                                 {
                                     title: '배포자',
@@ -143,7 +143,7 @@ jobs:
                     {
                         attachments: [{
                             color: '#2E289E',
-                            title: '🧊 주차권 시스템 Scale-down 성공!`,
+                            title: '🧊 주차권 시스템 Scale-down 성공!',
                             fields: [
                                 {
                                     title: '배포자',
