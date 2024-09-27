@@ -1,4 +1,4 @@
-name: WAS 인프라 - 피크 타임 Scale-Up
+name: WAS 인프라 - 피크 타임 Scale-Up V1
 on:
     workflow_dispatch:
 

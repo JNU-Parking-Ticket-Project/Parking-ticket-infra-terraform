@@ -39,14 +39,14 @@ jobs:
               uses: actions/checkout@v3
 
             - name: 아이들 모드 설정
-              uses: hashicorp/tfc-workflows-github/actions/upload-configuration@v1.0.0
+              uses: hashicorp/tfc-workflows-github/actions/upload-configuration@v1.3.0
               id: set-idle
               with:
                 workspace: ${{ env.TF_WORKSPACE }}
                 directory: ${{ env.IDLE_CONFIG_DIRECTORY }}
 
             - name: 레디스 단독 terminate Plan 생성
-              uses: hashicorp/tfc-workflows-github/actions/create-run@v1.0.0
+              uses: hashicorp/tfc-workflows-github/actions/create-run@v1.3.0
               id: redis-terminate-plan
               with:
                 workspace: ${{ env.TF_WORKSPACE }}
@@ -54,7 +54,7 @@ jobs:
                 args: "-target=aws_elasticache_replication_group.jnu-parking-redis-prod"
               
             - name: 레디스 단독 terminate Plan 실행
-              uses: hashicorp/tfc-workflows-github/actions/apply-run@v1.0.0
+              uses: hashicorp/tfc-workflows-github/actions/apply-run@v1.3.0
               if: fromJSON(steps.redis-terminate-plan.outputs.payload).data.attributes.actions.IsConfirmable
               id: redis-scale-up-apply
               with:
@@ -62,14 +62,14 @@ jobs:
                 comment: "레디스 단독 terminate Plan 실행 from GitHub Actions CI ${{ github.sha }}"
 
             - name: 메인터넌스 모드 설정
-              uses: hashicorp/tfc-workflows-github/actions/upload-configuration@v1.0.0
+              uses: hashicorp/tfc-workflows-github/actions/upload-configuration@v1.3.0
               id: set-maintenance
               with:
                 workspace: ${{ env.TF_WORKSPACE }}
                 directory: ${{ env.MAINTENANCE_CONFIG_DIRECTORY }}
 
             - name: 공지 페이지 라우팅 변경 Plan 생성
-              uses: hashicorp/tfc-workflows-github/actions/create-run@v1.0.0
+              uses: hashicorp/tfc-workflows-github/actions/create-run@v1.3.0
               id: maintenance-routing-plan
               with:
                 workspace: ${{ env.TF_WORKSPACE }}
@@ -77,7 +77,7 @@ jobs:
                 args: "-target=aws_cloudfront_distribution.jnu-parking-manager-distribution -target=aws_cloudfront_distribution.jnu-parking-apply-distribution"
               
             - name: 공지 페이지 라우팅 변경 Plan 실행
-              uses: hashicorp/tfc-workflows-github/actions/apply-run@v1.0.0
+              uses: hashicorp/tfc-workflows-github/actions/apply-run@v1.3.0
               if: fromJSON(steps.maintenance-routing-plan.outputs.payload).data.attributes.actions.IsConfirmable
               id: maintenance-routing-apply
               with:
