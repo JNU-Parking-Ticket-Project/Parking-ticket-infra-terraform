@@ -1,4 +1,4 @@
-name: WAS 인프라 - 피크 타임 Scale-Up V2 (new)
+name: WAS 인프라 - 대기 타임 Scale-Down V2 (new)
 on:
     workflow_dispatch:
 
@@ -6,7 +6,7 @@ env:
   TF_CLOUD_ORGANIZATION: sckwon770
   TF_API_TOKEN: ${{ secrets.TF_API_TOKEN }}
   TF_WORKSPACE: jnu-parking
-  PEAK_CONFIG_DIRECTORY: "./jnu-parking-prod-was/peak/"
+  IDLE_CONFIG_DIRECTORY: "./jnu-parking-prod-was/idle/"
   MAINTENANCE_CONFIG_DIRECTORY: "./jnu-parking-prod-was/maintenance/"
   IMAGE_NAME: jnuparking/jnu-parking-prod
 
@@ -26,7 +26,7 @@ jobs:
 
     modify-infra-with-terraform:
         needs: [ prepare-variables ]
-        name: 인프라 스케일 업
+        name: 인프라 스케일 다운
         runs-on: ubuntu-latest
         permissions:
           contents: read
@@ -38,28 +38,28 @@ jobs:
             - name: Checkout
               uses: actions/checkout@v3
 
-            - name: 피크 모드 설정
+            - name: 아이들 모드 설정
               uses: hashicorp/tfc-workflows-github/actions/upload-configuration@v1.0.0
-              id: set-peak
+              id: set-idle
               with:
                 workspace: ${{ env.TF_WORKSPACE }}
-                directory: ${{ env.PEAK_CONFIG_DIRECTORY }}
+                directory: ${{ env.IDLE_CONFIG_DIRECTORY }}
 
-            - name: 레디스 단독 scale-up Plan 생성
+            - name: 레디스 단독 terminate Plan 생성
               uses: hashicorp/tfc-workflows-github/actions/create-run@v1.0.0
-              id: redis-scale-up-plan
+              id: redis-terminate-plan
               with:
                 workspace: ${{ env.TF_WORKSPACE }}
-                configuration_version: ${{ steps.set-peak.outputs.configuration_version_id }}
+                configuration_version: ${{ steps.set-idle.outputs.configuration_version_id }}
                 args: "-target=aws_elasticache_replication_group.jnu-parking-redis-prod"
               
-            - name: 레디스 단독 scale-up Plan 실행
+            - name: 레디스 단독 terminate Plan 실행
               uses: hashicorp/tfc-workflows-github/actions/apply-run@v1.0.0
-              if: fromJSON(steps.redis-scale-up-plan.outputs.payload).data.attributes.actions.IsConfirmable
+              if: fromJSON(steps.redis-terminate-plan.outputs.payload).data.attributes.actions.IsConfirmable
               id: redis-scale-up-apply
               with:
-                run: ${{ steps.redis-scale-up-plan.outputs.run_id }}
-                comment: "Apply Run from GitHub Actions CI ${{ github.sha }}"
+                run: ${{ steps.redis-terminate-plan.outputs.run_id }}
+                comment: "레디스 단독 terminate Plan 실행 from GitHub Actions CI ${{ github.sha }}"
 
             - name: 메인터넌스 모드 설정
               uses: hashicorp/tfc-workflows-github/actions/upload-configuration@v1.0.0
@@ -82,7 +82,7 @@ jobs:
               id: maintenance-routing-apply
               with:
                 run: ${{ steps.maintenance-routing-plan.outputs.run_id }}
-                comment: "Apply Run from GitHub Actions CI ${{ github.sha }}"
+                comment: "공지 페이지 라우팅 변경 Plan 실행 from GitHub Actions CI ${{ github.sha }}"
 
     #         - name: 배포 완료 슬랙 알림 보내기
     #           uses: 8398a7/action-slack@v3
@@ -93,8 +93,8 @@ jobs:
     #                 {
     #                     attachments: [{
     #                         color: '#2E289E',
-    #                         title: '🔥 인프라 조정 알림',
-    #                         text: `주차권 시스템 Scale-up 성공! (EC2, RDS, ElastiCache)`,
+    #                         title: '🧊 인프라 조정 알림',
+    #                         text: `주차권 시스템 Scale-down 성공! (EC2, RDS, ElastiCache)`,
     #                         fields: [
     #                             {
     #                                 title: '배포자',
@@ -133,7 +133,7 @@ jobs:
     #             script: |
     #                 sudo docker rm -f $(sudo docker ps -qa)
     #                 sudo docker pull ${{ needs.prepare-variables.outputs.image-name }}:latest
-    #                 sudo docker compose --env-file .env.peak up -d
+    #                 sudo docker compose --env-file .env.idle up -d
     #                 sudo docker image prune -f
                     
     #         - name: 배포 완료 슬랙 알림 보내기
