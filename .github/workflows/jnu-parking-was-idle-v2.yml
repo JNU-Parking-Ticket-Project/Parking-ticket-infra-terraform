@@ -1,4 +1,4 @@
-name: WAS 인프라 - 대기 타임 Scale-Down V2 (new)
+name: 대기 타임 Scale-Down V2 (new)
 on:
     workflow_dispatch:
 
