@@ -45,22 +45,6 @@ jobs:
                 workspace: ${{ env.TF_WORKSPACE }}
                 directory: ${{ env.IDLE_CONFIG_DIRECTORY }}
 
-            - name: 레디스 단독 terminate Plan 생성
-              uses: hashicorp/tfc-workflows-github/actions/create-run@v1.3.0
-              id: redis-terminate-plan
-              with:
-                workspace: ${{ env.TF_WORKSPACE }}
-                configuration_version: ${{ steps.set-idle.outputs.configuration_version_id }}
-                args: "-target=aws_elasticache_replication_group.jnu-parking-redis-prod"
-              
-            - name: 레디스 단독 terminate Plan 실행
-              uses: hashicorp/tfc-workflows-github/actions/apply-run@v1.3.0
-              if: fromJSON(steps.redis-terminate-plan.outputs.payload).data.attributes.actions.IsConfirmable
-              id: redis-scale-up-apply
-              with:
-                run: ${{ steps.redis-terminate-plan.outputs.run_id }}
-                comment: "레디스 단독 terminate Plan 실행 from GitHub Actions CI ${{ github.sha }}"
-
             - name: 메인터넌스 모드 설정
               uses: hashicorp/tfc-workflows-github/actions/upload-configuration@v1.3.0
               id: set-maintenance
@@ -68,13 +52,42 @@ jobs:
                 workspace: ${{ env.TF_WORKSPACE }}
                 directory: ${{ env.MAINTENANCE_CONFIG_DIRECTORY }}
 
+
+            - name: 인프라 조정 시작 슬랙 알림 보내기
+              uses: 8398a7/action-slack@v3
+              with:
+                status: custom
+                fields: author, workflowRun, pullRequest
+                custom_payload: |
+                    {
+                        attachments: [{
+                            color: '#2E289E',
+                            title: '🤖 주차권 시스템 Scale-down 시작!`,
+                            fields: [
+                                {
+                                    title: '배포자',
+                                    value: `${process.env.AS_AUTHOR}`,
+                                    short: true,
+                                },
+                                {
+                                    title: '워크플로 링크',
+                                    value: `${process.env.AS_WORKFLOW_RUN}`,
+                                    short: true,
+                                },
+                            ]
+                        }]
+                    }
+              env:
+                SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+
             - name: 공지 페이지 라우팅 변경 Plan 생성
               uses: hashicorp/tfc-workflows-github/actions/create-run@v1.3.0
               id: maintenance-routing-plan
               with:
                 workspace: ${{ env.TF_WORKSPACE }}
                 configuration_version: ${{ steps.set-maintenance.outputs.configuration_version_id }}
-                args: "-target=aws_cloudfront_distribution.jnu-parking-manager-distribution -target=aws_cloudfront_distribution.jnu-parking-apply-distribution"
+                target: "aws_cloudfront_distribution.jnu-parking-manager-distribution,aws_cloudfront_distribution.jnu-parking-apply-distribution"
               
             - name: 공지 페이지 라우팅 변경 Plan 실행
               uses: hashicorp/tfc-workflows-github/actions/apply-run@v1.3.0
@@ -84,82 +97,117 @@ jobs:
                 run: ${{ steps.maintenance-routing-plan.outputs.run_id }}
                 comment: "공지 페이지 라우팅 변경 Plan 실행 from GitHub Actions CI ${{ github.sha }}"
 
-    #         - name: 배포 완료 슬랙 알림 보내기
-    #           uses: 8398a7/action-slack@v3
-    #           with:
-    #             status: custom
-    #             fields: author, workflowRun, pullRequest
-    #             custom_payload: |
-    #                 {
-    #                     attachments: [{
-    #                         color: '#2E289E',
-    #                         title: '🧊 인프라 조정 알림',
-    #                         text: `주차권 시스템 Scale-down 성공! (EC2, RDS, ElastiCache)`,
-    #                         fields: [
-    #                             {
-    #                                 title: '배포자',
-    #                                 value: `${process.env.AS_AUTHOR}`,
-    #                                 short: true,
-    #                             },
-    #                             {
-    #                                 title: '워크플로 링크',
-    #                                 value: `${process.env.AS_WORKFLOW_RUN}`,
-    #                                 short: true,
-    #                             },
-    #                         ]
-    #                     }]
-    #                 }
-    #           env:
-    #             SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
-                
-    # run-spring-boot:
-    #     needs: [ prepare-variables, modify-infra-with-terraform ]
-    #     runs-on: [ ubuntu-latest ]
-    #     name: 스프링 부트 기동
-    #     permissions:
-    #         id-token: write
-    #         contents: read
-    #     steps:
-    #         - name: GitHub 에서 레포 받아오기
-    #           uses: actions/checkout@v3
 
-    #         - name: 배포 스크립트 실행
-    #           uses: appleboy/ssh-action@master
-    #           with:
-    #             host: ${{ secrets.PROD_SSH_HOST }}
-    #             username: ${{ secrets.PROD_SSH_USERNAME }}
-    #             key: ${{ secrets.PROD_SSH_KEY }}
-    #             port: ${{ secrets.PROD_SSH_PORT }}
-    #             script: |
-    #                 sudo docker rm -f $(sudo docker ps -qa)
-    #                 sudo docker pull ${{ needs.prepare-variables.outputs.image-name }}:latest
-    #                 sudo docker compose --env-file .env.idle up -d
-    #                 sudo docker image prune -f
-                    
-    #         - name: 배포 완료 슬랙 알림 보내기
-    #           uses: 8398a7/action-slack@v3
-    #           with:
-    #             status: custom
-    #             fields: author, workflowRun, pullRequest
-    #             custom_payload: |
-    #                 {
-    #                     attachments: [{
-    #                         color: '#24C183',
-    #                         title: '✅ Spring boot 기동 알림',
-    #                         text: 'Spring boot 기동 성공!',
-    #                         fields: [
-    #                             {
-    #                                 title: '배포자',
-    #                                 value: `${process.env.AS_AUTHOR}`,
-    #                                 short: true,
-    #                             },
-    #                             {
-    #                                 title: '워크플로 링크',
-    #                                 value: `${process.env.AS_WORKFLOW_RUN}`,
-    #                                 short: true,
-    #                             },
-    #                         ]
-    #                     }]
-    #                 }
-    #           env:
-    #             SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+            - name: 인프라 전체 (EC2, RDS, Elasticache) scale-down Plan 생성
+              uses: hashicorp/tfc-workflows-github/actions/create-run@v1.3.0
+              id: infra-scale-down-plan
+              with:
+                workspace: ${{ env.TF_WORKSPACE }}
+                configuration_version: ${{ steps.set-idle.outputs.configuration_version_id }}
+                target: "aws_instance.jnu-parking-ec2-prod,aws_db_instance.jnu-parking-rds-prod,aws_elasticache_replication_group.jnu-parking-redis-prod"
+
+              
+            - name: 인프라 전체 (EC2, RDS) scale-down Plan 실행
+              uses: hashicorp/tfc-workflows-github/actions/apply-run@v1.3.0
+              if: fromJSON(steps.infra-scale-down-plan.outputs.payload).data.attributes.actions.IsConfirmable
+              id: infra-scale-down-apply
+              with:
+                run: ${{ steps.infra-scale-down-plan.outputs.run_id }}
+                comment: "인프라 전체 (EC2, RDS) scale-down Plan 실행 from GitHub Actions CI ${{ github.sha }}"
+
+
+            - name: 공지 페이지 라우팅 원상복귀 Plan 생성
+              uses: hashicorp/tfc-workflows-github/actions/create-run@v1.3.0
+              id: origin-routing-plan
+              with:
+                workspace: ${{ env.TF_WORKSPACE }}
+                configuration_version: ${{ steps.set-idle.outputs.configuration_version_id }}
+                target: "aws_cloudfront_distribution.jnu-parking-apply-distribution,aws_cloudfront_distribution.jnu-parking-manager-distribution"
+
+              
+            - name: 공지 페이지 라우팅 원상복귀 Plan 실행
+              uses: hashicorp/tfc-workflows-github/actions/apply-run@v1.3.0
+              if: fromJSON(steps.origin-routing-plan.outputs.payload).data.attributes.actions.IsConfirmable
+              id: origin-routing-apply
+              with:
+                run: ${{ steps.origin-routing-plan.outputs.run_id }}
+                comment: "공지 페이지 라우팅 원상복귀 Plan 실행 from GitHub Actions CI ${{ github.sha }}"
+            
+
+            - name: 배포 완료 슬랙 알림 보내기
+              uses: 8398a7/action-slack@v3
+              with:
+                status: custom
+                fields: author, workflowRun, pullRequest
+                custom_payload: |
+                    {
+                        attachments: [{
+                            color: '#2E289E',
+                            title: '🧊 주차권 시스템 Scale-down 성공!`,
+                            fields: [
+                                {
+                                    title: '배포자',
+                                    value: `${process.env.AS_AUTHOR}`,
+                                    short: true,
+                                },
+                                {
+                                    title: '워크플로 링크',
+                                    value: `${process.env.AS_WORKFLOW_RUN}`,
+                                    short: true,
+                                },
+                            ]
+                        }]
+                    }
+              env:
+                SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+                
+    run-spring-boot:
+        needs: [ prepare-variables, modify-infra-with-terraform ]
+        runs-on: [ ubuntu-latest ]
+        name: 스프링 부트 기동
+        permissions:
+            id-token: write
+            contents: read
+        steps:
+            - name: GitHub 에서 레포 받아오기
+              uses: actions/checkout@v3
+
+            - name: 배포 스크립트 실행
+              uses: appleboy/ssh-action@master
+              with:
+                host: ${{ secrets.PROD_SSH_HOST }}
+                username: ${{ secrets.PROD_SSH_USERNAME }}
+                key: ${{ secrets.PROD_SSH_KEY }}
+                port: ${{ secrets.PROD_SSH_PORT }}
+                script: |
+                    sudo docker rm -f $(sudo docker ps -qa)
+                    sudo docker pull ${{ needs.prepare-variables.outputs.image-name }}:latest
+                    sudo docker compose --env-file .env.idle up -d
+                    sudo docker image prune -f
+                      
+            - name: 배포 완료 슬랙 알림 보내기
+              uses: 8398a7/action-slack@v3
+              with:
+                status: custom
+                fields: author, workflowRun, pullRequest
+                custom_payload: |
+                    {
+                        attachments: [{
+                            color: '#24C183',
+                            title: '✅ Spring boot 기동 성공!',
+                            fields: [
+                                {
+                                    title: '배포자',
+                                    value: `${process.env.AS_AUTHOR}`,
+                                    short: true,
+                                },
+                                {
+                                    title: '워크플로 링크',
+                                    value: `${process.env.AS_WORKFLOW_RUN}`,
+                                    short: true,
+                                },
+                            ]
+                        }]
+                    }
+              env:
+                SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
