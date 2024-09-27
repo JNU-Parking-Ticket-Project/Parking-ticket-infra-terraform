@@ -24,7 +24,6 @@ provider "aws" {
 locals {
     ec2_instance_type = "t3.micro"
     rds_instance_class = "db.t4g.micro"
-    redis_instance_type = "cache.t4g.micro"
 }
 //////////🚨 IDLE instance types var 🚨////////////
 //////////////////////////////////////////////////
@@ -122,33 +121,113 @@ resource "aws_db_instance" "jnu-parking-rds-prod" {
     tags_all                              = {}
 }
 
-resource "aws_elasticache_replication_group" "jnu-parking-redis-prod" {
-    engine                     = "redis"
-    engine_version             = "7.1"
-    description                = "a shard(single node) with disabled cluster mode"
-    
-    replication_group_id       = "jnu-parking-redis-prod"
-    node_type                  = local.redis_instance_type
-    num_cache_clusters         = 1
 
-    parameter_group_name       = "default.redis7"
-    port                       = 6379
-    subnet_group_name          = "quokka-subnet-redis"
-    security_group_ids         = [
-        "sg-014ba12148b7c380d",
-    ]
-    
-    apply_immediately          = true
-    multi_az_enabled           = false
-    at_rest_encryption_enabled = false
-    auto_minor_version_upgrade = "true"
-    automatic_failover_enabled = false
-    data_tiering_enabled       = false
-    snapshot_retention_limit   = 0
-    snapshot_window            = "02:00-03:00"
-    transit_encryption_mode = null
-    transit_encryption_enabled = false
-    tags                       = {}
-    tags_all                   = {}
-    user_group_ids             = []
+resource "aws_cloudfront_distribution" "jnu-parking-apply-distribution" {
+    origin {
+        domain_name = "jnuparking-apply-ws-bucket.s3.ap-northeast-2.amazonaws.com"
+
+        origin_id   = "jnuparking-apply-ws-bucket.s3.ap-northeast-2.amazonaws.com"
+        origin_access_control_id = "E2HTAXXWC39GOU"
+        connection_attempts = 3
+        connection_timeout = 10
+    }
+
+    aliases = [ "apply.jnu-parking.com" ]
+    is_ipv6_enabled = true
+    price_class = "PriceClass_200"
+
+    enabled = true
+
+    default_cache_behavior {
+        target_origin_id = "jnuparking-apply-ws-bucket.s3.ap-northeast-2.amazonaws.com"
+
+        allowed_methods  = ["GET", "HEAD", "OPTIONS"]
+        cached_methods   = ["GET", "HEAD"]
+        cache_policy_id = "4135ea2d-6df8-44a3-9df3-4b5a84be39ad"
+        compress = true
+        origin_request_policy_id = "88a5eaf4-2fd4-4709-b370-b4c650ea3fcf"
+        response_headers_policy_id = "5cc3b908-e619-4b99-88e5-2cf7f45965bd"
+        viewer_protocol_policy = "redirect-to-https"
+    }
+
+    restrictions {
+        geo_restriction {
+            restriction_type = "none"
+        }
+    }
+
+    viewer_certificate {
+        acm_certificate_arn = "arn:aws:acm:us-east-1:992382691088:certificate/3015b1b4-fe33-40cb-aa6c-c6e639b09d5b"
+        cloudfront_default_certificate = false
+        minimum_protocol_version = "TLSv1.2_2021"
+        ssl_support_method = "sni-only"
+    }
+
+    custom_error_response {
+        error_caching_min_ttl = 10
+        error_code           = 403
+        response_code        = 200
+        response_page_path   = "/index.html"
+    }
+    custom_error_response {
+        error_caching_min_ttl = 10
+        error_code           = 404
+        response_code        = 200
+        response_page_path   = "/index.html"
+    }
+}
+
+resource "aws_cloudfront_distribution" "jnu-parking-manager-distribution" {
+    origin {
+        domain_name = "jnuparking-manager1-ws-bucket.s3.ap-northeast-2.amazonaws.com"
+
+        origin_access_control_id = "E3LBOQKK107382"
+        origin_id                = "jnuparking-manager1-ws-bucket.s3.ap-northeast-2.amazonaws.com"
+        connection_attempts      = 3
+        connection_timeout       = 10
+    }
+
+    aliases = [ "manager.jnu-parking.com" ]
+    is_ipv6_enabled = true
+    price_class = "PriceClass_200"
+
+    enabled = true
+
+    default_cache_behavior {
+        target_origin_id = "jnuparking-manager1-ws-bucket.s3.ap-northeast-2.amazonaws.com"
+
+        allowed_methods  = ["GET", "HEAD", "OPTIONS"]
+        cached_methods   = ["GET", "HEAD"]
+        cache_policy_id = "4135ea2d-6df8-44a3-9df3-4b5a84be39ad"
+        compress = true
+        origin_request_policy_id = "88a5eaf4-2fd4-4709-b370-b4c650ea3fcf"
+        response_headers_policy_id = "5cc3b908-e619-4b99-88e5-2cf7f45965bd"
+        viewer_protocol_policy = "redirect-to-https"
+    }
+
+    restrictions {
+        geo_restriction {
+            restriction_type = "none"
+        }
+    }
+
+    viewer_certificate {
+        acm_certificate_arn = "arn:aws:acm:us-east-1:992382691088:certificate/3015b1b4-fe33-40cb-aa6c-c6e639b09d5b"
+        cloudfront_default_certificate = false
+        minimum_protocol_version = "TLSv1.2_2021"
+        ssl_support_method = "sni-only"
+    }
+
+    custom_error_response {
+        error_caching_min_ttl = 10
+        error_code           = 403
+        response_code        = 200
+        response_page_path   = "/index.html"
+    }
+    custom_error_response {
+        error_caching_min_ttl = 10
+        error_code           = 404
+        response_code        = 200
+        response_page_path   = "/index.html"
+    }
 }

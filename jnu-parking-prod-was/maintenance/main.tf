@@ -20,14 +20,14 @@ provider "aws" {
 }
 
 ///////////////////////////////////////////////////
-//////////🚨 PEAK instance types var 🚨////////////
+//////////🚨 IDLE instance types var 🚨////////////
 locals {
-    ec2_instance_type = "t3.2xlarge"
-    rds_instance_class = "db.t4g.2xlarge"
-    redis_instance_type = "cache.t4g.medium"
+    ec2_instance_type = "t3.micro"
+    rds_instance_class = "db.t4g.micro"
 }
-//////////🚨 PEAK instance types var 🚨////////////
+//////////🚨 IDLE instance types var 🚨////////////
 //////////////////////////////////////////////////
+// Maintenance 파이플하인에 필요없는 리소스 값들이지만, 휴먼에러가 발생시 인프라가 전부 삭제되는 실수를 방지하기 위해 추가함
 
 resource "aws_eip" "was-eip1" {
     instance = aws_instance.jnu-parking-ec2-prod.id
@@ -43,10 +43,10 @@ resource "aws_instance" "jnu-parking-ec2-prod" {
     associate_public_ip_address          = true
     subnet_id                            = "subnet-0501252b2d997228c"
     vpc_security_group_ids               = [
-        "sg-097820e8f89289808" 
+        "sg-097820e8f89289808",
     ]
     
-    user_data_replace_on_change          = false // true = apply change  destroying and recreating
+    user_data_replace_on_change          = false // true = apply change, destroying and recreating
     disable_api_termination              = false
     ebs_optimized                        = true
     get_password_data                    = false
@@ -85,7 +85,7 @@ resource "aws_db_instance" "jnu-parking-rds-prod" {
     storage_type                          = "gp2"
     db_subnet_group_name                  = "default-vpc-0e6d600f6ad4ec867"
     vpc_security_group_ids                = [
-        "sg-0c79e4a111f6ff607"  // JnuParkingProdRDSSG
+        "sg-0c79e4a111f6ff607", // JnuParkingProdRDSSG
     ]
     port                                  = 3306
     publicly_accessible                   = true
@@ -99,7 +99,7 @@ resource "aws_db_instance" "jnu-parking-rds-prod" {
     multi_az                              = false
 
     enabled_cloudwatch_logs_exports       = [
-        "audit", 
+        "audit",
         "error",
         "general",
         "slowquery",
@@ -122,41 +122,13 @@ resource "aws_db_instance" "jnu-parking-rds-prod" {
     tags_all                              = {}
 }
 
-resource "aws_elasticache_replication_group" "jnu-parking-redis-prod" {
-    engine                     = "redis"
-    engine_version             = "7.1"
-    description                = "a shard(single node) with disabled cluster mode"
-    
-    replication_group_id       = "jnu-parking-redis-prod"
-    node_type                  = local.redis_instance_type
-    num_cache_clusters         = 1
 
-    parameter_group_name       = "default.redis7"
-    port                       = 6379
-    subnet_group_name          = "quokka-subnet-redis"
-    security_group_ids         = [
-        "sg-014ba12148b7c380d" 
-    ]
-    
-    apply_immediately          = true
-    multi_az_enabled           = false
-    at_rest_encryption_enabled = false
-    auto_minor_version_upgrade = "true"
-    automatic_failover_enabled = false
-    data_tiering_enabled       = false
-    snapshot_retention_limit   = 0
-    snapshot_window            = "02:00-03:00"
-    transit_encryption_mode = null
-    transit_encryption_enabled = false
-    tags                       = {}
-    tags_all                   = {}
-    user_group_ids             = []
-}
+
 
 
 resource "aws_cloudfront_distribution" "jnu-parking-apply-distribution" {
     origin {
-        domain_name = "jnuparking-apply-ws-bucket.s3.ap-northeast-2.amazonaws.com"
+        domain_name = "jnuparking-tmp-page.s3.ap-northeast-2.amazonaws.com"
 
         origin_id   = "jnuparking-apply-ws-bucket.s3.ap-northeast-2.amazonaws.com"
         origin_access_control_id = "E2HTAXXWC39GOU"
@@ -211,7 +183,7 @@ resource "aws_cloudfront_distribution" "jnu-parking-apply-distribution" {
 
 resource "aws_cloudfront_distribution" "jnu-parking-manager-distribution" {
     origin {
-        domain_name = "jnuparking-manager1-ws-bucket.s3.ap-northeast-2.amazonaws.com"
+        domain_name = "jnuparking-tmp-page.s3.ap-northeast-2.amazonaws.com"
 
         origin_access_control_id = "E3LBOQKK107382"
         origin_id                = "jnuparking-manager1-ws-bucket.s3.ap-northeast-2.amazonaws.com"
