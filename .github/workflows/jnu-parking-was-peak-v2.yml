@@ -80,7 +80,7 @@ jobs:
                 custom_payload: |
                     {
                         attachments: [{
-                            color: '#2E289E',
+                            color: '#FCCF51',
                             title: '🤖 주차권 시스템 Scale-up 시작!',
                             fields: [
                                 {
