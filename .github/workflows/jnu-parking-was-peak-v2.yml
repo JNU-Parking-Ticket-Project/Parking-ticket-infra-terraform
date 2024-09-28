@@ -24,7 +24,7 @@ jobs:
           run: |
             echo "image-name=$IMAGE_NAME" >> $GITHUB_OUTPUT
 
-    modify-infra-with-terraform:
+    scale-up-infra:
         needs: [ prepare-variables ]
         name: 인프라 스케일 업
         runs-on: ubuntu-latest
@@ -186,7 +186,7 @@ jobs:
 
 
     run-spring-boot:
-        needs: [ prepare-variables, modify-infra-with-terraform ]
+        needs: [ prepare-variables, scale-up-infra ]
         runs-on: [ ubuntu-latest ]
         name: 스프링 부트 기동
         permissions:
@@ -218,7 +218,74 @@ jobs:
                     {
                         attachments: [{
                             color: '#24C183',
-                            title: '✅ Spring boot 기동 성공!',
+                            title: '(1/2) ✅ Spring boot 기동 성공!',
+                            fields: [
+                                {
+                                    title: '배포자',
+                                    value: `${process.env.AS_AUTHOR}`,
+                                    short: true,
+                                },
+                                {
+                                    title: '워크플로 링크',
+                                    value: `${process.env.AS_WORKFLOW_RUN}`,
+                                    short: true,
+                                },
+                            ]
+                        }]
+                    }
+              env:
+                SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+
+    start-service:
+        needs: [ prepare-variables, scale-up-infra, run-spring-boot ]
+        name: 라우팅 재개를 통한 서비스 재게
+        runs-on: ubuntu-latest
+        permissions:
+          contents: read
+          pull-requests: write
+        env:
+            AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+            AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v3
+
+            - name: 피크 모드 설정
+              uses: hashicorp/tfc-workflows-github/actions/upload-configuration@v1.3.0
+              id: set-peak
+              with:
+                workspace: ${{ env.TF_WORKSPACE }}
+                directory: ${{ env.PEAK_CONFIG_DIRECTORY }}
+
+            - name: 공지 페이지 라우팅 원상복귀 Plan 생성
+              uses: hashicorp/tfc-workflows-github/actions/create-run@v1.3.0
+              id: origin-routing-plan
+              with:
+                workspace: ${{ env.TF_WORKSPACE }}
+                configuration_version: ${{ steps.set-peak.outputs.configuration_version_id }}
+                target: "aws_cloudfront_distribution.jnu-parking-apply-distribution,aws_cloudfront_distribution.jnu-parking-manager-distribution"
+
+              
+            - name: 공지 페이지 라우팅 원상복귀 Plan 실행
+              uses: hashicorp/tfc-workflows-github/actions/apply-run@v1.3.0
+              if: fromJSON(steps.origin-routing-plan.outputs.payload).data.attributes.actions.IsConfirmable
+              id: origin-routing-apply
+              with:
+                run: ${{ steps.origin-routing-plan.outputs.run_id }}
+                comment: "공지 페이지 라우팅 원상복귀 Plan 실행 from GitHub Actions CI ${{ github.sha }}"
+            
+
+            - name: 서비스 재게 슬랙 알림 보내기
+              uses: 8398a7/action-slack@v3
+              with:
+                status: custom
+                fields: author, workflowRun, pullRequest
+                custom_payload: |
+                    {
+                        attachments: [{
+                            color: '#24C183',
+                            title: '(2/2) ✅ 서비스 재게 성공!',
                             fields: [
                                 {
                                     title: '배포자',
