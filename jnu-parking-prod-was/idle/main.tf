@@ -70,7 +70,7 @@ resource "aws_instance" "jnu-parking-ec2-prod" {
 
 resource "aws_db_instance" "jnu-parking-rds-prod" {
     engine                                = "mysql"
-    engine_version                        = "8.0.35"
+    engine_version                        = "8.0.40"
     availability_zone                     = "ap-northeast-2a"
     ca_cert_identifier                    = "rds-ca-rsa2048-g1"
 
