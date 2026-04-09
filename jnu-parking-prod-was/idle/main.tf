@@ -70,7 +70,7 @@ resource "aws_instance" "jnu-parking-ec2-prod" {
 
 resource "aws_db_instance" "jnu-parking-rds-prod" {
     engine                                = "mysql"
-    engine_version                        = "8.0.42"
+    engine_version                        = "8.0.44"
     availability_zone                     = "ap-northeast-2a"
     ca_cert_identifier                    = "rds-ca-rsa2048-g1"
 
@@ -109,7 +109,7 @@ resource "aws_db_instance" "jnu-parking-rds-prod" {
     performance_insights_retention_period = 0
 
     apply_immediately                     = true
-    auto_minor_version_upgrade            = true
+    auto_minor_version_upgrade            = false
     customer_owned_ip_enabled             = false
     iam_database_authentication_enabled   = false
     kms_key_id                            = "arn:aws:kms:ap-northeast-2:992382691088:key/639766af-579d-4efd-84e9-dc03fc5e266e"
