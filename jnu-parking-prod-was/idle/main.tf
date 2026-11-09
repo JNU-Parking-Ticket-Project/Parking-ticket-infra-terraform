@@ -70,7 +70,7 @@ resource "aws_instance" "jnu-parking-ec2-prod" {
 
 resource "aws_db_instance" "jnu-parking-rds-prod" {
     engine                                = "mysql"
-    engine_version                        = "8.0.44"
+    engine_version                        = "8.4.8"
     availability_zone                     = "ap-northeast-2a"
     ca_cert_identifier                    = "rds-ca-rsa2048-g1"
 
@@ -114,8 +114,8 @@ resource "aws_db_instance" "jnu-parking-rds-prod" {
     iam_database_authentication_enabled   = false
     kms_key_id                            = "arn:aws:kms:ap-northeast-2:992382691088:key/639766af-579d-4efd-84e9-dc03fc5e266e"
     license_model                         = "general-public-license"
-    option_group_name                     = "default:mysql-8-0"
-    parameter_group_name                  = "default.mysql8.0"
+    option_group_name                     = "default:mysql-8-4-db-zkvsznw4ooirqwasoegjm7cggm-upgrade"
+    parameter_group_name                  = "default.mysql8.4-db-zkvsznw4ooirqwasoegjm7cggm-upgrade"
     maintenance_window                    = "fri:14:46-fri:15:16"
     tags                                  = {}
     tags_all                              = {}
